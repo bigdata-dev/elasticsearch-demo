@@ -16,6 +16,7 @@ public class EsTest {
 	 */
 	@Test
 	public void test1(){
+
 		TransportClient transportClient = new TransportClient();
 		transportClient.addTransportAddress(new InetSocketTransportAddress("ryxc181", 9300));
 		transportClient.addTransportAddress(new InetSocketTransportAddress("ryxc182", 9300));
@@ -40,17 +41,5 @@ public class EsTest {
 		
 	}
 
-	@Test
-	public void test3(){
-		Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "elasticsearch").build();
-		TransportClient transportClient = new TransportClient(settings);
-		transportClient.addTransportAddress(new InetSocketTransportAddress("ryxc181",9300));
-		transportClient.addTransportAddress(new InetSocketTransportAddress("ryxc182",9300));
-		transportClient.addTransportAddress(new InetSocketTransportAddress("ryxc183",9300));
 
-		GetResponse getResponse = transportClient.prepareGet(index,type,"21").get();
-		System.out.println(getResponse.getSourceAsString());
-
-	}
-	
 }
