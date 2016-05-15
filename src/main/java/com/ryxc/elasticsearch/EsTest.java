@@ -48,8 +48,8 @@ public class EsTest {
     }
 
     /**
-     * 设置 client.transport.sniff为true,使客户端嗅探整个集群状态，把集群中其他集群的IP地址加到客户端
-     * 好处：一般不用手动在客户端段设置集群里所有集群的ip，他会自动添加，并且自动发现新加入的集群的机器
+     * 设置 client.transport.sniff为true,使客户端嗅探整个集群状态，把集群中其他机器的IP地址加到客户端
+     * 好处：一般不用手动在客户端段设置集群里所有机器的ip，他会自动添加，并且自动发现新加入的集群的机器
      */
     @Test
     public void test3() {
