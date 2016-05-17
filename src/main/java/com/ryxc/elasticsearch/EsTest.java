@@ -7,28 +7,42 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.get.GetRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.node.DiscoveryNode;
-import org.elasticsearch.common.collect.HppcMaps;
 import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.InternalTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.LongTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms.Bucket;
+import org.elasticsearch.search.aggregations.metrics.sum.Sum;
+import org.elasticsearch.search.highlight.HighlightField;
+import org.elasticsearch.search.sort.SortOrder;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class EsTest {
@@ -62,7 +76,6 @@ public class EsTest {
 
         GetResponse getResponse = transportClient.prepareGet(index, type, "21").get();
         System.out.println(getResponse.getSourceAsString());
-
     }
 
     /**
@@ -124,9 +137,9 @@ public class EsTest {
     @Test
     public void test5(){
         HashMap<String, Object> hashMap = new HashMap<String, Object>();
-        hashMap.put("name","lisi");
-        hashMap.put("age",27);
-        IndexResponse response = client.prepareIndex(index, type, "3").setSource(hashMap).get();
+        hashMap.put("name","ww");
+        hashMap.put("age",17);
+        IndexResponse response = client.prepareIndex(index, type).setSource(hashMap).get();
         System.out.println(response.getVersion());
     }
 
@@ -151,11 +164,12 @@ public class EsTest {
     public void test7() throws IOException{
         XContentBuilder builder = XContentFactory.jsonBuilder()
                 .startObject()
-                .field("name", "helper")
-                .field("score", 60)
+                .field("name", "li")
+                .field("score", 100)
                 .endObject();
 
-        IndexResponse response = client.prepareIndex(index, type, "3").setSource(builder).get();
+        IndexResponse response = client.prepareIndex(index, type).setSource(builder).get();
+        //IndexResponse response = client.prepareIndex(index, type, "3").setSource(builder).get();
         System.out.println(response.getVersion());
 
     }
@@ -266,6 +280,142 @@ public class EsTest {
     }
 
 
+    /**
+     * 	 * 查询
+     *
+     *
+     *
+     * filter过滤
+     * 后面使用from to的时候，默认都是闭区间。都包含。
+     * gt：大于
+     * gte：大于等于
+     * lt：小于
+     * lte：小于等于
+     */
+    @Test
+    public void test15(){
+        SearchResponse searchResponse = client.prepareSearch(index) //指定索引库
+                .setTypes(type) //指定查询索引库下的类型
+                .setSearchType(SearchType.QUERY_THEN_FETCH) //指定查询的方式
+                .addSort("age",SortOrder.ASC)
+                //.setQuery(QueryBuilders.matchQuery("name", "zs")) //指定查询条件
+
+                //.setPostFilter(FilterBuilders.rangeFilter("age").gt(10).lte(19))
+                //.setPostFilter(FilterBuilders.rangeFilter("age").from(10).to(19))
+
+                .setFrom(0)
+                .setSize(10)
+                .setExplain(true)  //针对查询的数据按照相关度排序
+                .get();
+
+        SearchHits searchHits = searchResponse.getHits();
+        long totalHits = searchHits.getTotalHits();
+        System.out.println("totalHits:"+totalHits);
+
+        SearchHit[] hits = searchHits.getHits();
+
+        for (SearchHit hit:
+             hits) {
+            System.out.println(hit.getSourceAsString());
+
+        }
+
+    }
 
 
+    /**
+     *  高亮
+     * @throws Exception
+     */
+    @Test
+    public void test16() throws Exception {
+
+        SearchResponse searchResponse = client.prepareSearch(index)
+                .setTypes(type)
+                .setSearchType(SearchType.QUERY_THEN_FETCH)
+                .setQuery(QueryBuilders.matchQuery("name", "zs"))
+                //设置高亮
+                .addHighlightedField("name")
+                .setHighlighterPreTags("<font color='red'>")
+                .setHighlighterPostTags("</font>")
+                .setFrom(0)
+                .setSize(10)
+                .setExplain(true)
+                .get();
+
+        SearchHits searchHits = searchResponse.getHits();
+        System.out.println("totalHits:"+searchHits.getTotalHits());
+
+        SearchHit[] hits = searchHits.getHits();
+        for (SearchHit hit:hits) {
+            //获取高亮内容
+            Map<String, HighlightField> highlightFields = hit.getHighlightFields();
+            //查询高亮字段内容
+            HighlightField  highlightField = highlightFields.get("name");
+            Text[] fragments = highlightField.getFragments();
+            for (Text text:fragments
+                 ) {
+                System.out.println(text);
+            }
+
+            System.out.println(hit.getSourceAsString());
+        }
+
+    }
+
+    /**
+     * 删除索引库
+     * @throws Exception
+     */
+    @Test
+    public void test17() throws Exception {
+        client.admin().indices().prepareDelete(index).get();
+
+    }
+
+    /**
+     * 统计每个年龄有多少人
+     * @throws Exception
+     */
+    @Test
+    public void test18() throws Exception {
+
+        SearchResponse searchResponse = client.prepareSearch(index)
+                .setTypes(type)
+                .setSearchType(SearchType.QUERY_THEN_FETCH)
+                .addAggregation(AggregationBuilders.terms("age_terms").field("age"))
+                .get();
+
+        Terms terms = searchResponse.getAggregations().get("age_terms");
+        List<Terms.Bucket> buckets = terms.getBuckets();
+        for (Terms.Bucket bucket:buckets
+             ) {
+            System.out.println(bucket.getKey()+"---"+bucket.getDocCount());
+        }
+    }
+
+    /**
+     * 对name进行分组 score 求和
+     * 默认情况下，只能返回前10组分组的数据,需要使用size方法，设置为0，这样就会把所有分组数据都返回
+     * @throws Exception
+     */
+    @Test
+    public void test19() throws Exception {
+        SearchResponse searchResponse = client.prepareSearch(index)
+                .setTypes(type)
+                .addAggregation(AggregationBuilders.terms("name_terms").field("name").size(0)
+                        .subAggregation(AggregationBuilders.sum("score_sum").field("score")))
+                .get();
+
+        Terms terms = searchResponse.getAggregations().get("name_terms");
+
+        List<Bucket> buckets = terms.getBuckets();
+        for (Bucket bucket:buckets
+             ) {
+            Sum sum = bucket.getAggregations().get("score_sum");
+            System.out.println(bucket.getKey()+"----"+ sum.getValue());
+        }
+
+
+    }
 }
