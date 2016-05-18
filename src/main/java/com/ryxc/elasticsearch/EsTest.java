@@ -164,8 +164,8 @@ public class EsTest {
     public void test7() throws IOException{
         XContentBuilder builder = XContentFactory.jsonBuilder()
                 .startObject()
-                .field("name", "li")
-                .field("score", 100)
+                .field("name", "li5")
+                .field("score", 50)
                 .endObject();
 
         IndexResponse response = client.prepareIndex(index, type).setSource(builder).get();
@@ -416,6 +416,44 @@ public class EsTest {
             System.out.println(bucket.getKey()+"----"+ sum.getValue());
         }
 
+
+    }
+
+    /**
+     * 使用不同的分片查询方式查询数据
+     * @throws Exception
+     */
+    @Test
+    public void test20() throws Exception {
+        //优先在本地节点有的分片中查询，没有的话在到其他节点查询
+        //SearchResponse searchResponse = client.prepareSearch(index).setPreference("_local")
+        //只在主机分片中查询
+        //SearchResponse searchResponse = client.prepareSearch(index).setPreference("_primary")
+        //先在主机分片中查询，主分片找不到(挂了)，就在副本中查询
+        //SearchResponse searchResponse = client.prepareSearch(index).setPreference("_primary_first")
+        //只在节点ID下查询
+        //SearchResponse searchResponse = client.prepareSearch(index).setPreference("_only_node:A_LtqRAHQ8GIO-1ttTSukQ")
+        //优先在指定节点ID下查询
+        //SearchResponse searchResponse = client.prepareSearch(index).setPreference("_prefer_node:A_LtqRAHQ8GIO-1ttTSukQ")
+        //查询指定分片的数据
+          SearchResponse searchResponse = client.prepareSearch(index).setPreference("_shards:0")
+
+
+                .setTypes(type)
+                .addSort("score",SortOrder.ASC)
+                .setFrom(0)
+                .setSize(10)
+                .setExplain(true)
+                .get();
+
+        SearchHits searchHits = searchResponse.getHits();
+        System.out.println("总数："+searchHits.getTotalHits());
+
+        SearchHit[] hits = searchHits.getHits();
+        for (SearchHit searchHit:hits
+             ) {
+            System.out.println(searchHit.getSourceAsString());
+        }
 
     }
 }
